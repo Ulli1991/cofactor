@@ -48,6 +48,8 @@ On clusters, compute steps can be restricted to batch jobs (`require_batch` in t
 submits the job, which runs frozen copies of cofactor and of the check.
 
 ## Documentation
+- [docs/USAGE.md](docs/USAGE.md): **how to use it**: first run, setting up a project, writing a check step by step,
+  reading results, checks on states from real runs, configuration reference, troubleshooting
 - [docs/INSTALL.md](docs/INSTALL.md): clang + Enzyme, site configuration, smoke test
 - [docs/WRITING_A_CHECK.md](docs/WRITING_A_CHECK.md): the four files, the rules, kinds of checks, Enzyme tips
 - [docs/HYDRO_CODES.md](docs/HYDRO_CODES.md): using cofactor with large hydro codes (GIZMO, AREPO, ...) and what for

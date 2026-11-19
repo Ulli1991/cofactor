@@ -333,11 +333,11 @@ def do_submit(S, T, cfgs, src, accept=False):
     frozen = base / f"cofactor_{stamp}"
     shutil.copytree(ROOT, frozen, ignore=shutil.ignore_patterns(".git", "__pycache__", "site.ini"))
     if T.project is not None:
-        fp = base / f"project_{stamp}"
+        fp = base / f"frozen_{stamp}" / T.project.name  # keeps the project's name: same work and manifest directories as unfrozen runs
         shutil.copytree(T.project / ".cofactor", fp / ".cofactor", ignore=shutil.ignore_patterns("__pycache__"))
         tdir = fp / T.dir.relative_to(T.project)
     else:
-        tdir = base / f"check_{stamp}"
+        tdir = base / f"frozen_{stamp}" / T.dir.name
         shutil.copytree(T.dir, tdir, ignore=shutil.ignore_patterns("__pycache__"))
     job = base / f"job_{stamp}.sh"
     src = resolve_src(T, cfgs[0], src, need=True)

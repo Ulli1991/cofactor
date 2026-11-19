@@ -14,6 +14,12 @@ synthetic inputs or on states dumped from a real run, and compares what the code
 What it does not do: decide whether the equations describe the physics well, or how accurate the discretisation is. That
 still needs physical tests and convergence studies. cofactor makes sure the code is the discretisation you wrote down.
 
+No test problem is needed. cofactor runs the extracted functions on chosen inputs (or on states dumped from a short real
+run, which only supplies inputs), not a simulation with a known answer such as a shock tube or a collapse. A direct test
+tells you whether the discretised physics gives the right result; cofactor tells you whether the code is the
+discretisation you meant, and it does so earlier and more precisely (which term, which line, which input), without
+designing a test problem. Use both: check process A with cofactor while implementing it, then run the physical tests.
+
 It was built for large simulation codes (GIZMO, AREPO, GADGET), where such pieces are numerous and usually tested only end to
 end, but it works on any C/C++ code that clang compiles.
 
@@ -78,3 +84,6 @@ The GIZMO setup is run against a GIZMO source tree: `cofactor run examples/gizmo
 
 ## Status
 Early. Tested with clang/LLVM 18.1.8 and Enzyme `b1d93d0b` on Linux with Slurm. C/C++ code; Fortran via flang untested.
+
+## License
+BSD 3-Clause, see [LICENSE](LICENSE). Enzyme and LLVM are separate projects under their own licenses; cofactor only loads the Enzyme plugin.

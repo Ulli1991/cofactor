@@ -12,6 +12,12 @@ with a small harness under clang with the Enzyme plugin, and compares what the c
 differentiation of the same code gives. Every comparison is a *row* with a worst-case value and a pass threshold (*bar*)
 that you write down before the first run.
 
+The typical use: you add a physical process, write down its equations, discretise and implement them, and check with
+cofactor that the implementation is that discretisation. No test problem with a known solution is needed: the extracted
+functions run on chosen inputs (or on states dumped from a short real run). This complements physical tests, it does not
+replace them: those tell you whether the discretisation gives the right physics; cofactor tells you whether the code is
+the discretisation you meant, and points to the term and input where it is not.
+
 ## 2. First run
 
 ```

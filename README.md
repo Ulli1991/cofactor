@@ -1,10 +1,23 @@
 # cofactor
 
-**cofactor is a framework for checking numerical code against itself with automatic differentiation.**
-It takes the real code under test (copied verbatim, never re-typed), runs it on real or synthetic inputs, and uses
-[Enzyme](https://enzyme.mit.edu) to verify what the code claims about itself: hand-coded derivatives and Jacobians,
-adjoints and transposes, conservation bookings, invariances. It was built for large simulation codes, where such pieces
-are numerous and usually tested only end to end, but it works on any C/C++ code that clang compiles.
+**cofactor is a linter for physics implementations: it checks the real code against the mathematics it is meant to
+implement, using automatic differentiation.**
+
+The intended use: you want to add a physical process to your code. You write down its equations, discretise them and
+implement them. cofactor then checks directly whether the implementation is correct with respect to that discretisation:
+is the force the derivative of the potential, the Jacobian of the implicit solver the derivative of its residual, the
+adjoint the exact transpose of the operator, the booked energy change the change of the energy function along the code's
+own rates, the flux invariant under a Galilean boost? It takes the code under test verbatim (never re-typed), runs it on
+synthetic inputs or on states dumped from a real run, and compares what the code claims with
+[Enzyme](https://enzyme.mit.edu) applied to the same code. Unlike a static linter it runs the code.
+
+What it does not do: decide whether the equations describe the physics well, or how accurate the discretisation is. That
+still needs physical tests and convergence studies. cofactor makes sure the code is the discretisation you wrote down.
+
+It was built for large simulation codes (GIZMO, AREPO, GADGET), where such pieces are numerous and usually tested only end to
+end, but it works on any C/C++ code that clang compiles.
+
+![cofactor workflow and how a bug shows up](docs/figures/workflow.png)
 
 Like `.clang-format` or `.clang-tidy`, a project keeps its own small setup in a `.cofactor/` directory; cofactor is the tool
 that runs it.

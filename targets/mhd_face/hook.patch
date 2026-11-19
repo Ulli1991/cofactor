@@ -1,0 +1,88 @@
+From 1270c3c7b2b4439e015a706fb33cc308cc966034 Mon Sep 17 00:00:00 2001
+From: Ulrich Steinwandel <uli@mpa-garching.mpg.de>
+Date: Wed, 18 Nov 2026 17:34:03 +0100
+Subject: [PATCH] Test-only TEST_MHD_DUMP_FACE_STATES: one-rank raw dump of
+ sampled hydro face inputs/outputs for the Enzyme face harness (default off)
+
+---
+ hydro/hydro_evaluate.h | 50 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
+
+diff --git a/hydro/hydro_evaluate.h b/hydro/hydro_evaluate.h
+index 29fa5f160..80f2352b4 100644
+--- a/hydro/hydro_evaluate.h
++++ b/hydro/hydro_evaluate.h
+@@ -19,6 +19,45 @@
+   is ensured safe. but we do have other flags set for manifest conservation in some hydro solvers,
+   for wakeups, and other key routines. those must all be protected if openmp is used -- */
+ /* --------------------------------------------------------------------------------- */
++#ifdef TEST_MHD_DUMP_FACE_STATES
++/* test only: raw face inputs/outputs for an external autodiff harness; one rank, no OpenMP; sampled faces from step 3 on */
++static FILE *face_dump_fd = NULL; static long face_dump_n = 0, face_dump_step_n = 0, face_dump_seen = 0; static integertime face_dump_step = -1;
++static char face_dump_a[sizeof(struct INPUT_STRUCT_NAME) + sizeof(struct particle_data) + sizeof(struct gas_cell_data) + sizeof(struct OUTPUT_STRUCT_NAME) + 64];
++static int face_dump_select(struct INPUT_STRUCT_NAME *l, int j)
++{
++    if(NTask != 1) {return 0;}
++    if(All.NumCurrentTiStep < 3 || face_dump_n >= 6000) {return 0;}
++    if(All.NumCurrentTiStep != face_dump_step) {face_dump_step = All.NumCurrentTiStep; face_dump_step_n = 0;}
++    if(face_dump_step_n >= 600) {return 0;}
++    face_dump_seen++;
++    Vec3<double> dp = l->Pos - P[j].Pos; nearest_xyz(dp); double cv = dot(dp, l->Vel - CellP[j].VelPred);
++    return ((face_dump_seen % 37) == 0) || (cv < 0 && (face_dump_seen % 5) == 0);
++}
++static void face_dump_begin(struct INPUT_STRUCT_NAME *l, int j, double dt_j, int jact, double fci, double fcj, struct OUTPUT_STRUCT_NAME *o)
++{
++    char *b = face_dump_a; double aux[4] = {dt_j, fci, fcj, 0}; int ia[4] = {jact, TimeBinActive[P[j].TimeBin], (int)All.NumCurrentTiStep, 0};
++    memcpy(b, l, sizeof(*l)); b += sizeof(*l); memcpy(b, &P[j], sizeof(struct particle_data)); b += sizeof(struct particle_data);
++    memcpy(b, &CellP[j], sizeof(struct gas_cell_data)); b += sizeof(struct gas_cell_data); memcpy(b, o, sizeof(*o)); b += sizeof(*o);
++    memcpy(b, aux, sizeof(aux)); b += sizeof(aux); memcpy(b, ia, sizeof(ia));
++}
++static void face_dump_end(int j, struct OUTPUT_STRUCT_NAME *o, struct Conserved_var_Riemann *F, struct Riemann_outputs *Ro, struct Input_vec_Riemann *Rv,
++                          double *jac, Vec3<double> A, double An, struct kernel_hydra *kh)
++{
++    if(!face_dump_fd)
++    {
++        char fn[256]; snprintf(fn, sizeof(fn), "%s/face_dump.bin", All.OutputDir); face_dump_fd = fopen(fn, "wb");
++        int sz[10] = {0x475a4644, (int)sizeof(struct INPUT_STRUCT_NAME), (int)sizeof(struct particle_data), (int)sizeof(struct gas_cell_data), (int)sizeof(struct OUTPUT_STRUCT_NAME),
++                      (int)sizeof(struct Conserved_var_Riemann), (int)sizeof(struct Riemann_outputs), (int)sizeof(struct Input_vec_Riemann), (int)sizeof(struct kernel_hydra), (int)sizeof(All)};
++        double g[4] = {fac_mu, fac_magnetic_pressure, boxSize, boxHalf};
++        fwrite(sz, sizeof(sz), 1, face_dump_fd); fwrite(&All, sizeof(All), 1, face_dump_fd); fwrite(g, sizeof(g), 1, face_dump_fd);
++    }
++    double jz[24] = {0}; if(!jac) {jac = jz;}
++    fwrite(face_dump_a, sizeof(face_dump_a), 1, face_dump_fd); fwrite(o, sizeof(*o), 1, face_dump_fd); fwrite(&CellP[j], sizeof(struct gas_cell_data), 1, face_dump_fd);
++    fwrite(F, sizeof(*F), 1, face_dump_fd); fwrite(Ro, sizeof(*Ro), 1, face_dump_fd); fwrite(Rv, sizeof(*Rv), 1, face_dump_fd); fwrite(jac, sizeof(double), 24, face_dump_fd);
++    double a4[4] = {A[0], A[1], A[2], An}; fwrite(a4, sizeof(a4), 1, face_dump_fd); fwrite(kh, sizeof(*kh), 1, face_dump_fd);
++    fflush(face_dump_fd); face_dump_n++; face_dump_step_n++;
++}
++#endif
+ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
+ {
+     int j, k, n, startnode, numngb, kernel_mode, listindex;
+@@ -170,6 +209,10 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
+                     }
+                     j_is_active_for_fluxes = 1;
+                 }
++#endif
++#ifdef TEST_MHD_DUMP_FACE_STATES /* TEST_FACE_DUMP_A */
++                int face_dump_this = face_dump_select(&local, j);
++                if(face_dump_this) {face_dump_begin(&local, j, dt_hydrostep_j, j_is_active_for_fluxes, FluxCorrectionFactor_to_i, FluxCorrectionFactor_to_j, &out);}
+ #endif
+                 kernel.dp = local.Pos - P[j].Pos;
+                 nearest_xyz(kernel.dp); /* find the closest image in the given box size  */
+@@ -548,6 +591,13 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
+ #endif
+ #endif // magnetic //
+ 
++#ifdef TEST_MHD_DUMP_FACE_STATES /* TEST_FACE_DUMP_B */
++#ifdef DIVBCLEANING_CONSERVATIVE_PSI_OVER_CH
++                if(face_dump_this) {face_dump_end(j, &out, &Fluxes, &Riemann_out, &Riemann_vec, &psi_face_jac[0][0], Face_Area_Vec, Face_Area_Norm, &kernel);}
++#else
++                if(face_dump_this) {face_dump_end(j, &out, &Fluxes, &Riemann_out, &Riemann_vec, NULL, Face_Area_Vec, Face_Area_Norm, &kernel);}
++#endif
++#endif
+                 /* if this is particle j's active timestep, you should sent them the time-derivative information as well, for their subsequent drift operations */
+                 if(j_is_active_for_fluxes)
+                 {
+-- 
+2.51.0
+

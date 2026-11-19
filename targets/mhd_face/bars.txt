@@ -1,0 +1,20 @@
+# mhd_face bars: from enzyme/mhd_audit/REPORT.md "Checks (... <=1e-12 passes)", set before the 2026-11-18 runs; unchanged.
+# "<threshold> [@tag] <row-name prefix>": @tag = bar applies (and its row must exist) when the config name contains tag.
+# Reported only, no bar: info/note rows, the Dedner reference (not an adjoint pair by construction), the Dedner booking scaled
+# by the booked value (judged on the sum-of-|terms| row: REPORT.md, 2e4x cancellation), the Powell E_kin+E_B row (the barred
+# row is the total), and the Galilean (G)/(V) rows (analysis rows of job 231830, judged in docs/MHD_CONTINUATION.md).
+1e-12 0 harness = GIZMO run
+1e-12 @psi (a) psi/c_h adjoint
+1e-12 @psi (a) per-face centred identity
+1e-12 @psi (b) face-state Jacobian hand vs Enzyme
+1e-12 @psi (b) face-state Jacobian: Enzyme reverse = forward
+1e-12 (c) dE_B/d(BV)
+1e-12 @psi (c) dE_psi/dZ
+1e-12 @psi (c) GLM upwind: Enzyme dE(B,psi) + heat booked = 0
+1e-12 @psi (c) GLM upwind heat >= 0
+1e-12 @mfv_psi (c) MFV psi transport: Enzyme dE_psi + heat booked = 0
+1e-12 @mfv_psi (c) MFV psi transport heat >= 0
+1e-12 (c) Powell: Enzyme d(E_kin+E_B+E_th) along code rates = ledger row 0
+1e-12 @ded (c) Dedner phi_mean A: same, scale = sum of |terms|
+1e-12 @psi (c) cell i rebuilt from hydro input
+1e-12 (P) Powell divB (out.divB contribution) = cleaning source face divergence

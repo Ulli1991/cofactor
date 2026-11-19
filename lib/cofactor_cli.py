@@ -270,14 +270,32 @@ def do_recipe(S, T, cfg, src, key, subdir, what):
         raise Fail(f"{what} of {cfg}: expected output {out} missing", 4)
 
 
+def config_defines(path):
+    """macro definitions from a Config.sh-style file: one NAME or NAME=VALUE per line, '#' and '%' start comments"""
+    p = Path(path)
+    if not p.is_file():
+        raise Fail(f"defines_from: {p} not found", 4)
+    out = []
+    for l in p.read_text().split("\n"):
+        l = re.split(r"[#%]", l, 1)[0].strip()
+        if l:
+            out.append(l.split()[0])
+    return out
+
+
 def do_harness(S, T, cfg, src, accept=False):
     require_batch(S, "harness")
     W = workdir(S, T, cfg, src)
     do_extract(S, T, cfg, src, accept)
     ctx = context(S, T, cfg, src)
-    defs = " ".join(f"-D{d}" for l in lines(tval(T, cfg, "defines")) for d in l.split())
+    dl = [d for l in lines(tval(T, cfg, "defines")) for d in l.split()]
+    df = tval(T, cfg, "defines_from")
+    if df.strip():  # the code's own config file (e.g. GIZMO/AREPO/GADGET Config.sh): the copied code sees the build's macros
+        dl = config_defines(subst(df, ctx, f"{T.name} defines_from")) + dl
+    defs = " ".join(shlex.quote(f"-D{d}") for d in dl)
     flags = subst(tval(T, cfg, "harness_flags"), ctx, f"{T.name} harness_flags")
-    base = (f"{ctx['clang']} -std={tval(T, cfg, 'std', 'c++14')} -O2 -ffp-contract=off -fplugin={ctx['plugin']} "
+    opt = tval(T, cfg, "harness_optimize", "-O2")
+    base = (f"{ctx['clang']} -std={tval(T, cfg, 'std', 'c++14')} {opt} -ffp-contract=off -fplugin={ctx['plugin']} "
             f"-mllvm -enzyme-loose-types=1 -mllvm -enzyme-globals-default-inactive=1 "
             f"-Wno-unused-variable -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-deprecated-declarations "
             f"{defs} -I{W / 'gen'} -I{ROOT / 'lib'} -I{T.dir} {T.dir / tval(T, cfg, 'harness', 'harness.cc')} "

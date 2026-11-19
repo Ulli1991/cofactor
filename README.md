@@ -20,8 +20,9 @@ tells you whether the discretised physics gives the right result; cofactor tells
 discretisation you meant, and it does so earlier and more precisely (which term, which line, which input), without
 designing a test problem. Use both: check process A with cofactor while implementing it, then run the physical tests.
 
-It was built for large simulation codes (GIZMO, AREPO, GADGET), where such pieces are numerous and usually tested only end to
-end, but it works on any C/C++ code that clang compiles.
+For now it is aimed at the GADGET/GIZMO/AREPO code family (GIZMO, GADGET-4, OpenGadget3, AREPO), where such pieces are
+numerous and usually tested only end to end. The core is general: it works on any C/C++ code that clang compiles, and
+wider coverage is possible.
 
 ![cofactor workflow and how a bug shows up](docs/figures/workflow.png)
 
@@ -81,6 +82,10 @@ submits the job, which runs frozen copies of cofactor and of the check.
 | `examples/gizmo` | `mhd_face` | a large code end to end: hook, no-FMA build, dump run, bitwise replay of the MHD face, adjoints, energy bookings, Galilean invariance |
 
 The GIZMO setup is run against a GIZMO source tree: `cofactor run examples/gizmo/kernel -s <gizmo>`.
+
+## Tests
+cofactor's own regression tests (extractor rules, manifest, CLI, check/report library incl. NaN, missing rows, exit codes)
+need no Enzyme: `bash tests/run_tests.sh`. They run on every push (GitHub Actions).
 
 ## Status
 Early. Tested with clang/LLVM 18.1.8 and Enzyme `b1d93d0b` on Linux with Slurm. C/C++ code; Fortran via flang untested.

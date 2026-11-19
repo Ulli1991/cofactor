@@ -152,8 +152,10 @@ int main(int argc, char **argv)
   errors of vectors; NaN always counts as the worst value. `exclude(reason, where)` counts a record you could not check.
 - Put reverse-mode code under `#ifndef FWD_ONLY`: if Enzyme cannot compile reverse mode for your function, cofactor
   rebuilds forward-only and the report says `REVERSE SKIPPED` (exit 2, incomplete).
-- Start with a "row 0" that shows the copied code behaves like the original (finite values, or bitwise equality with
-  outputs dumped from a real run, section 6).
+- Start with a "row 0" that shows the copied code behaves like the original: bitwise equality with outputs dumped from a
+  real run (section 6) is the strong form. For checks on synthetic inputs, make the copied code see what the real build
+  sees: `defines_from = {src}/Config.sh` (the code's macros) and `harness_optimize` (its optimisation flags); otherwise
+  a macro or flag difference between harness and build goes unnoticed.
 
 ### 4.3 `bars.txt`: pass thresholds, written before the first run
 
@@ -264,8 +266,10 @@ directory containing `target.ini`, a name under `$COFACTOR_TARGETS`, or a shippe
 **`target.ini` keys** (in `[target]`, overridable per `[config:NAME]`; defaults from the project's `[defaults]`):
 `description`, `spec`, `harness`, `bars`, `std` (C++ standard of the harness, default `c++14`), `extract_from`
 (`src`|`build`), `default_src`, `build`, `build_timeout`, `build_output`, `dump`, `dump_timeout`, `dump_output`,
-`harness_flags`, `harness_args`, `harness_timeout`, `defines`, `expect` (`PASS`|`FAIL`|`INCOMPLETE`); `[vars]` adds
-placeholders.
+`harness_flags`, `harness_args`, `harness_timeout`, `defines`, `defines_from` (a Config.sh-style file, e.g.
+`{build}/Config.sh`: its `NAME` / `NAME=VALUE` lines become `-D` flags, so the copied code sees the build's macros),
+`harness_optimize` (default `-O2`; set it to the build's optimisation flags; `-ffp-contract=off` is always added),
+`expect` (`PASS`|`FAIL`|`INCOMPLETE`); `[vars]` adds placeholders.
 
 **Placeholders** in recipes, `harness_flags`, `harness_args`: `{src}` `{build}` `{dumprun}` `{gen}` `{work}` `{target}`
 `{project}` `{cfg}` `{cofactor}` `{lib}` `{plugin}` `{clang}`, every `[vars]` key (project < check < site), every key of

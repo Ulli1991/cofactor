@@ -150,6 +150,19 @@ class Extractor:
             wh.append(where)
         self._emit(name, ", ".join(wh) or "(literal)", "\n".join(parts))
 
+    def variant(self, src_name, name, replacements):
+        """a what-if copy of an extracted block: each (old, new) must occur exactly once in it (e.g. a control arm with
+        one term corrected); recorded in the manifest like any block"""
+        src = next((r for r in self.rows if r[0] == src_name), None)
+        if src is None:
+            raise ExtractError(f"variant {name}: no extracted block {src_name}")
+        text = (self.O / src_name).read_text()
+        for old, new in replacements:
+            if text.count(old) != 1:
+                raise ExtractError(f"variant {name}: {old!r} occurs {text.count(old)} times in {src_name} (need exactly 1)")
+            text = text.replace(old, new)
+        self._emit(name, f"variant of {src_name}: " + "; ".join(f"{o!r} -> {n!r}" for o, n in replacements), text)
+
     def literal(self, name, text):
         self._emit(name, "(literal)", text)
 

@@ -134,7 +134,7 @@ PH = re.compile(r"(\$?)\{(\w+)(:q)?\}")
 
 
 def context(S, T, cfg, src):
-    W = workdir(S, T, cfg)
+    W = workdir(S, T, cfg, src)
     ctx = {"cofactor": str(ROOT), "lib": str(ROOT / "lib"), "target": str(T.dir), "cfg": cfg, "work": str(W),
            "build": str(W / "build"), "dumprun": str(W / "dumprun"), "gen": str(W / "gen"), "src": str(src) if src else "",
            "plugin": os.path.expandvars(S.get("toolchain", "enzyme_plugin", fallback="")),
@@ -176,8 +176,14 @@ def tval(T, cfg, key, default=""):
     return T.P.get("defaults", key, fallback=default)
 
 
-def workdir(S, T, cfg):
-    return Path(os.path.expandvars(S.get("paths", "work"))) / T.name / cfg
+def workdir(S, T, cfg, src=None):
+    """<work>/<check>/<source tree tag>/<config>: runs of the same check on different source trees never share files"""
+    base = Path(os.path.expandvars(S.get("paths", "work"))) / T.name
+    if src:
+        import hashlib
+        p = Path(src).resolve()
+        base = base / f"{p.name}_{hashlib.sha1(str(p).encode()).hexdigest()[:6]}"
+    return base / cfg
 
 
 # ---------------------------------------------------------------- shell with the site prelude and a process-group timeout
@@ -225,7 +231,7 @@ def resolve_src(T, cfg, src, need):
 
 # ---------------------------------------------------------------- steps
 def do_extract(S, T, cfg, src, accept=False):
-    W = workdir(S, T, cfg)
+    W = workdir(S, T, cfg, src)
     W.mkdir(parents=True, exist_ok=True)
     frm = tval(T, cfg, "extract_from", "src")
     base = W / "build" if frm == "build" else src
@@ -248,7 +254,7 @@ def do_recipe(S, T, cfg, src, key, subdir, what):
     if not recipe.strip():
         print(f"{T.name} {cfg}: no {what} step")
         return
-    W = workdir(S, T, cfg)
+    W = workdir(S, T, cfg, src)
     d = W / subdir
     shutil.rmtree(d, ignore_errors=True)
     d.mkdir(parents=True)
@@ -266,7 +272,7 @@ def do_recipe(S, T, cfg, src, key, subdir, what):
 
 def do_harness(S, T, cfg, src, accept=False):
     require_batch(S, "harness")
-    W = workdir(S, T, cfg)
+    W = workdir(S, T, cfg, src)
     do_extract(S, T, cfg, src, accept)
     ctx = context(S, T, cfg, src)
     defs = " ".join(f"-D{d}" for l in lines(tval(T, cfg, "defines")) for d in l.split())

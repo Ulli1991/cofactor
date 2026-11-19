@@ -1,0 +1,5 @@
+# bars, set BEFORE the first run: "<threshold> [@config-tag] <row-name prefix>"; longest matching prefix wins.
+# A bar whose row never appears is a failure (the check did not run). Rows without a bar are reported, not judged.
+0 0 copied code runs
+1e-12 (1)
+1e-12 (2) Enzyme reverse = forward

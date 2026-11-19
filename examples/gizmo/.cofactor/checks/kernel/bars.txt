@@ -1,0 +1,4 @@
+# example_kernel bars (set before the first run). "<threshold> [@config-tag] <row-name prefix>"
+0 0 kernel_main: mode 0 = modes -1/+1
+1e-12 (k) hand dwk = Enzyme d(wk)/du
+1e-12 (k) Enzyme reverse = forward

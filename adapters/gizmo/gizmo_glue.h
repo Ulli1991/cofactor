@@ -1,7 +1,7 @@
-// cofactor: Enzyme declarations and GIZMO stubs for a harness that compiles real GIZMO code.
+// cofactor adapter for GIZMO: stubs and inactive registrations for a harness that compiles real GIZMO code (needs allvars.h, MPI).
 // Include after <cstdio> and the GIZMO declarations (allvars.h), before any extracted code.
-#ifndef COFACTOR_GLUE_H
-#define COFACTOR_GLUE_H
+#ifndef COFACTOR_GIZMO_GLUE_H
+#define COFACTOR_GIZMO_GLUE_H
 #include <cstdio>
 #include <cstdlib>
 
@@ -14,9 +14,7 @@ static int g_warn_hits = 0, g_abort_hits = 0;
 #undef endrun
 #define endrun(x) {g_abort_hits++;}
 
-extern int enzyme_dup, enzyme_const, enzyme_dupnoneed, enzyme_out;
-template <typename R, typename... A> R __enzyme_fwddiff(void *, A...);
-template <typename R, typename... A> R __enzyme_autodiff(void *, A...);
+#include "cofactor_enzyme.h"
 /* globals and library calls without derivatives */
 __attribute__((used)) void *__enzyme_inactive_global_All = (void *)&All;
 __attribute__((used)) void *__enzyme_inactivefn_1 = (void *)&fflush;

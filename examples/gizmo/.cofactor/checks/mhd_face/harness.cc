@@ -11,7 +11,7 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 #include "../declarations/allvars.h"
-#include "cofactor_glue.h" /* GIZMO warning/abort stubs (counted), Enzyme declarations, inactive globals/functions */
+#include "gizmo_glue.h" /* adapters/gizmo: GIZMO warning/abort stubs (counted), Enzyme declarations, inactive globals/functions */
 #include "ext_head.h"
 __attribute__((used)) void *__enzyme_inactive_global_TBA = (void *)&TimeBinActive;
 

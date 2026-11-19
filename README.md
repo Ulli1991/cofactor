@@ -1,33 +1,65 @@
 # cofactor
 
-Checks the real GIZMO/Stella code against itself with [Enzyme](https://enzyme.mit.edu) automatic differentiation:
-Jacobians, adjoints, energy and momentum bookings, Galilean invariance, table derivatives. The code under test is never
-re-typed: it is copied verbatim from a build copy, replayed on states dumped by that same build, and every derivative row
-counts only after the replay reproduces GIZMO.
+**cofactor is a framework for checking numerical code against itself with automatic differentiation.**
+It takes the real code under test (copied verbatim, never re-typed), runs it on real or synthetic inputs, and uses
+[Enzyme](https://enzyme.mit.edu) to verify what the code claims about itself: hand-coded derivatives and Jacobians,
+adjoints and transposes, conservation bookings, invariances. It was built for large simulation codes, where such pieces
+are numerous and usually tested only end to end, but it works on any C/C++ code that clang compiles.
 
-## How a target works
-1. **Hook** (`targets/<t>/hook.patch`): a test-only GIZMO flag dumps raw states at one call site (one rank, no FMA build).
-2. **Extraction** (`targets/<t>/spec.py`, `lib/extract.py`): code blocks and functions copied by unique text markers.
-   Fails (exit 3) on a missing or duplicated marker, an unbalanced function, an undeclared preprocessor repair, or a block
-   whose hash differs from the target's manifest ("target changed"; `--accept` after review).
-3. **Harness** (`targets/<t>/harness.cc`, `lib/cofactor_glue.h`, `lib/cofactor_checks.h`): row 0 = harness reproduces
-   GIZMO (records that fail it are excluded from all derivative rows); then Enzyme forward/reverse checks.
-4. **Bars** (`targets/<t>/bars.txt`): set before a run, `<threshold> [@config-tag] <row prefix>`. Report: every row with
-   PASS/FAIL, exclusions counted, `REVERSE SKIPPED` when the reverse-mode build failed. Exit 0 pass, 1 fail, 2 incomplete.
+Like `.clang-format` or `.clang-tidy`, a project keeps its own small setup in a `.cofactor/` directory; cofactor is the tool
+that runs it.
 
-## Targets
-| target | covers | status |
+```
+my_code/
+  src/...
+  .cofactor/
+    project.ini                 shared defaults and placeholders
+    checks/
+      flux_jacobian/
+        target.ini              steps (build, dump, extract, harness) and configs
+        spec.py                 what to copy from the source, by unique text markers
+        harness.cc              calls the copied code, records check rows
+        bars.txt                pass thresholds, fixed before the first run
+```
+
+## Quick start
+```
+export PATH=<cofactor>/bin:$PATH
+cp <cofactor>/site.example.ini ~/.config/cofactor/site.ini   # machine: clang + Enzyme plugin, modules, batch system
+cofactor check-env
+cd <cofactor>/examples/c_cooling && cofactor run cooling     # or 'cofactor submit cooling' on a cluster
+```
+Expected: `clean` PASS, `planted_bug` FAIL (the example plants a wrong derivative to show it is caught).
+
+For your code: `cofactor init` at the project root, `cofactor new <check>`, edit the four files, `cofactor run <check>`.
+
+## What a run does
+1. **build** (optional recipe): an isolated build copy, e.g. with a test-only hook that dumps raw states from a real run;
+2. **dump** (optional recipe): the run that writes those states;
+3. **extract**: `spec.py` copies functions/blocks verbatim. A missing or duplicated marker, an unbalanced function, or a
+   block that changed since the last run stops here (exit 3) until reviewed (`--accept`);
+4. **harness**: compiled with clang + Enzyme (`-ffp-contract=off`); row 0 shows the harness reproduces the code, then the
+   derivative/identity rows; if Enzyme's reverse mode fails to compile, the forward-only build runs and the report says
+   `REVERSE SKIPPED`;
+5. **report**: every row with its worst value and where it occurred, PASS/FAIL against `bars.txt`, exclusions counted.
+   Exit 0 pass, 1 fail, 2 incomplete, 3 extraction error, 4 setup error.
+
+On clusters, compute steps can be restricted to batch jobs (`require_batch` in the site file); `cofactor submit` writes and
+submits the job, which runs frozen copies of cofactor and of the check.
+
+## Documentation
+- [docs/INSTALL.md](docs/INSTALL.md): clang + Enzyme, site configuration, smoke test
+- [docs/WRITING_A_CHECK.md](docs/WRITING_A_CHECK.md): the four files, the rules, kinds of checks, Enzyme tips
+- [docs/HYDRO_CODES.md](docs/HYDRO_CODES.md): using cofactor with large hydro codes (GIZMO, AREPO, ...) and what for
+
+## Examples
+| project | check | shows |
 |---|---|---|
-| `mhd_face` | MFM/MFV face, Dedner GLM and psi/c_h cleaning, Powell terms, final per-cell bookings | port of the 2026-11-18 MHD audit; porting check against its results |
-| `mhd_cg_gradient` | constrained-gradient (CG) passes of `gradients.cc` | planned (design: `docs/DESIGN.md`) |
+| `examples/c_cooling` | `cooling` | the smallest complete check: plain C, synthetic inputs, a planted bug that must fail |
+| `examples/gizmo` | `kernel` | real code (GIZMO's SPH kernel), every kernel shape x dimension, no build needed |
+| `examples/gizmo` | `mhd_face` | a large code end to end: hook, no-FMA build, dump run, bitwise replay of the MHD face, adjoints, energy bookings, Galilean invariance |
 
-Planned ports: MHD gradient/kernel and KVP harnesses, Stella feedback events.
+The GIZMO setup is run against a GIZMO source tree: `cofactor run examples/gizmo/kernel -s <gizmo>`.
 
-## Running
-Everything runs in Slurm jobs (`run/*.sbatch`); nothing is compiled or run on login nodes. Toolchain: clang 18 with
-ClangEnzyme-18 (Enzyme v0.0.302), GIZMO builds with `-ffp-contract=off`.
-
-## Known Enzyme limits (workarounds in the harnesses)
-- by-value structs as shadows alias (pass element by element);
-- reverse mode on a whole hydro face asserts in `GradientUtils::unwrapM` (forward columns used; reported as REVERSE SKIPPED);
-- no rule for `fflush`/`printf` (registered inactive; GIZMO warning/abort paths stubbed and the record excluded).
+## Status
+Early. Tested with clang/LLVM 18.1.8 and Enzyme `b1d93d0b` on Linux with Slurm. C/C++ code; Fortran via flang untested.

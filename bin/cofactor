@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""cofactor entry point (see lib/cofactor_cli.py or 'cofactor --help')."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+import cofactor_cli  # noqa: E402
+
+sys.exit(cofactor_cli.main())

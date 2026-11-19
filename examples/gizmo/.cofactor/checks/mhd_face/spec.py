@@ -1,11 +1,9 @@
 """mhd_face: the GIZMO hydro face (MFM/MFV, Dedner GLM or psi/c_h), its final per-cell operations and accessors.
 Port of enzyme/mhd_audit/harness/gen.py (2026-11-18); the extracted text must be byte-identical to that script's output.
-usage: python3 spec.py <build_dir> <out_dir> <target_dir> [--accept]"""
+usage: python3 spec.py <build_dir> <out_dir> <manifest_dir> [--accept]"""
 import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
-import extract  # noqa: E402
+import extract  # cofactor lib/ on PYTHONPATH (the cofactor CLI sets it)
 
 HD = "hydro/hydro_evaluate.h"
 TL = "hydro/hydro_toplevel.cc"

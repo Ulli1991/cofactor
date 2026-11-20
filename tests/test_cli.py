@@ -20,6 +20,15 @@ class TestSubst(unittest.TestCase):
             cli.subst("{nope}", ctx)
 
 
+class TestJobBanner(unittest.TestCase):
+    def test_quotes_in_commit_message(self):
+        import subprocess
+        line = cli.job_banner("abc123 fix the build's flags; a \"quoted\" (x) $HOME", True, "/tmp/frozen dir")
+        out = subprocess.run(["bash", "-c", line], stdout=subprocess.PIPE, universal_newlines=True)
+        self.assertEqual(out.returncode, 0)
+        self.assertEqual(out.stdout.strip(), "cofactor abc123 fix the build's flags; a \"quoted\" (x) $HOME + uncommitted changes (frozen copy /tmp/frozen dir)")
+
+
 class TestConfigDefines(unittest.TestCase):
     def test_config_sh_lines(self):
         with tempfile.TemporaryDirectory() as d:

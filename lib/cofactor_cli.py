@@ -343,6 +343,11 @@ def do_run(S, T, cfgs, src, accept=False):
     return 0 if not bad else max(res[c] for c in bad) or 1
 
 
+def job_banner(commit, dirty, frozen):
+    """the job script's first line: which cofactor runs, shell-quoted (commit messages may contain quotes)"""
+    return "echo " + shlex.quote(f"cofactor {commit}{' + uncommitted changes' if dirty else ''} (frozen copy {frozen})")
+
+
 def do_submit(S, T, cfgs, src, accept=False):
     base = Path(os.path.expandvars(S.get("paths", "work"))) / T.name
     base.mkdir(parents=True, exist_ok=True)
@@ -368,7 +373,7 @@ def do_submit(S, T, cfgs, src, accept=False):
     commit = subprocess.run(["git", "-C", str(ROOT), "log", "--oneline", "-1"], stdout=subprocess.PIPE, universal_newlines=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--short"], stdout=subprocess.PIPE, universal_newlines=True).stdout.strip()
     job.write_text(f"#!/bin/bash\n#SBATCH -J cof_{T.name.replace('/', '_')}\n#SBATCH -o {base}/job_{stamp}_%j.out\n{hdr}\n"
-                   f"echo 'cofactor {commit}{' + uncommitted changes' if dirty else ''} (frozen copy {frozen})'\n"
+                   f"{job_banner(commit, bool(dirty), frozen)}\n"
                    f"export COFACTOR_SITE={S.path}\n{' '.join(shlex.quote(x) for x in cmd)}\n")
     r = subprocess.run(S.get("batch", "submit", fallback="sbatch").split() + [str(job)], stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, universal_newlines=True)
